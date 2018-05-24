@@ -1,0 +1,305 @@
+\include{settings}
+
+\begin{document}	% начало документа
+
+% Титульная страница
+\include{titlepage}
+
+% Содержание
+\include{ToC}
+
+
+\section{Цель работы}
+Изучить основы создания параллельных программ на С++ с использованием библиотек pthreads и OpenMP. Написать параллельную программу, которая решает следующую задачу: поиск площади окружностей, с использованием метода Монте-Карло. Сравнить производительность решений.
+
+
+\section{Программа работы}
+Для решения задачи создана часть программы, не зависящая от использования многопоточности и средств её реализации. На основе данной (методом линкования) собираются программы последовательного выполнения и многопоточного выполнения. Количество потоков задаётся аргументом командной строки для обеих многопоточных реализации.
+
+Проверка эффективности выполнения проводится на компьютере с процессором описанным в листинге \ref{bash:cpu}
+
+\begin{lstlisting}[label=bash:cpu]
+lscpu
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                4
+On-line CPU(s) list:   0-3
+Thread(s) per core:    2
+Core(s) per socket:    2
+Socket(s):             1
+NUMA node(s):          1
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 42
+Model name:            Intel(R) Core(TM) i7-2640M CPU @ 2.80GHz
+Stepping:              7
+CPU MHz:               799.975
+CPU max MHz:           3500.0000
+CPU min MHz:           800.0000
+BogoMIPS:              5584.55
+Virtualization:        VT-x
+L1d cache:             32K
+L1i cache:             32K
+L2 cache:              256K
+L3 cache:              4096K
+NUMA node0 CPU(s):     0-3
+Flags:                 fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic popcnt tsc_deadline_timer aes xsave avx lahf_lm epb tpr_shadow vnmi flexpriority ept vpid xsaveopt dtherm ida arat pln pts
+\end{lstlisting}
+
+\section{Теоретическая информация}
+Метод Монте-Карло в данном случае заключается в генерации случайных точек в прямоугольном пространстве, включающем в себя окружности, площади которых мы ищем. Подсчёт площади прямоугольника является простой задачей, а отношение точек, вошедших в окружности, ко всем точкам примерно равно отношению площадей окружностей к площади вышеупомянутого прямоугольника.
+
+\section{Ход выполнения работы}
+\label{sec:monte}
+
+Для сокращения общего количества строк кода и использования одинаковых методов вычисления площади, общий набор функций был вынесен в файл \ref{code:monte}
+
+\lstinputlisting[
+	label=code:monte,
+	caption={monte.c},% для печати символ '_' требует выходной символ '\'
+]{monte.c}
+\parindent=1cm % командна \lstinputlisting сбивает параментры отступа
+
+В фрагменте кода, приведённом в листинге \ref{code:monte} реализованы функции:
+
+\begin{itemize}
+\item поиска минимальных необходимых границ прямоугольника, охватывающего все заданные окружности.
+\item подсчёта количества заданных окружностей
+\item парсинга аргументов командной строки на предмет координат окружностей
+\item получение потоко-безопасным путем случайной точки
+\item основная логика метода Монте-Карло
+\end{itemize}
+
+\subsection{Последовательное выполнение}
+Первым был реализован данный метод в меру наименьшей сложности, что позволило проверить корректность основного алгоритма подсчёта площади окружностей из пункта \ref{sec:monte} и однопоточную производительность. Код реализации приведён в линстинге \ref{code:serial}
+
+\lstinputlisting[
+	label=code:serial,
+	caption={serial.c},% для печати символ '_' требует выходной символ '\'
+]{serial.c}
+\parindent=1cm % командна \lstinputlisting сбивает параментры отступа
+
+Данная программа принимает тройки координат (x,y,радиус) в качестве аргументов командной строки. И запускает генерацию случайной точки и проверку на её попадание 2000000000 раз подряд.
+
+Результат запуска для одной единичной окружности приведён в листинге \ref{code:serialBash}
+
+\begin{lstlisting}[label=code:serialBash]
+$ ./serial 1 1 1
+Number of args: 4
+Number of circles: 1
+top-left corner: 0.000000,2.000000
+bot-right corner: 2.000000,0.000000
+circles area is 3.141584 
+\end{lstlisting}
+
+А время выполнения, засечённое утилитой командной строки \textbf{time}, составило 1 минуту 35 секунд.
+
+\subsection{Параллелизм на основе Pthreads}
+\label{sec:pthreads}
+
+Принцип распараллеливания построен на деление общего количества "выстрелов" между потоками. После выполнения всех параллельных потоков их успешные "выстрелы" суммируются, а общее количество попыток известно, что и позволяет узнать соотношение. В качестве аргументов принимается количество потоков и тройки координат кругов. Код реализации приведён в листинге \ref{code:pthreads}.
+
+\lstinputlisting[
+	label=code:pthreads,
+	caption={pthreads.c},% для печати символ '_' требует выходной символ '\'
+]{pthreads.c}
+\parindent=1cm % командна \lstinputlisting сбивает параментры отступа
+
+Результат запуска для одной единичной окружности и двух потоков приведён в листинге \ref{code:serialBash}
+
+\begin{lstlisting}[label=code:serialBash]
+$ ./pthreads 2 1 1 1
+Number of args: 5
+Number of circles: 1
+Number of threads: 2
+top-left corner: 0.000000,2.000000
+bot-right corner: 2.000000,0.000000
+circles area is 3.141598 
+\end{lstlisting}
+
+А время выполнения, засечённое утилитой командной строки \textbf{time}, составило:
+\begin{itemize}
+\item 1 минуту 35 секунд - один поток
+\item 51 секунда - два потока
+\item 37 секунд - четыре потока
+\item 36 секунд - восемь потоков
+\item 37 секунд - шестнадцать  потоков
+\end{itemize}
+
+\subsection{Параллелизм на основе OpenMP}
+Принцип распараллеливания идентичен приведённому в пункте \ref{sec:pthreads}. Количество потоков тоже регулируется через аргумент командной строки. Код реализации приведён в листинге \ref{code:omp}.
+
+\lstinputlisting[
+	label=code:omp,
+	caption={omp.c},% для печати символ '_' требует выходной символ '\'
+]{omp.c}
+\parindent=1cm % командна \lstinputlisting сбивает параментры отступа
+
+Результат запуска для одной единичной окружности и двух потоков приведён в листинге \ref{code:ompBash}
+
+\begin{lstlisting}[label=code:ompBash]
+$ ./omp 2 1 1 1
+Number of args: 5
+Number of circles: 1
+Number of threads: 2
+top-left corner: 0.000000,2.000000
+bot-right corner: 2.000000,0.000000
+THIS
+Hits for thread 0: 785399606
+Hits for thread 1: 785416430
+circles area is 3.141632
+\end{lstlisting}
+
+А время выполнения, засечённое утилитой командной строки \textbf{time}, составило:
+\begin{itemize}
+\item 1 минуту 35 секунд - один поток
+\item 61 секунду- два потока
+\item 36 секунд- четыре потока
+\item 36 секунд- восемь потоков
+\item 36 секунд - шестнадцать потоков
+\end{itemize}
+
+\newpage
+
+\section{Эксперименты}
+Каждая из реализации использует одинаковую кодовую базу и тестировалась на единичной окружности (позволяет легко проверить корректность счёта).
+\begin{lstlisting}[caption={Набор данных}, label={lst:input1}]
+0 0 1
+\end{lstlisting}
+
+Программа запускалась на наборе входных данных при $N_{total} = 2000000000$. Pthread и MPI версии запускались при этом в $1, 2, 4, 8$ потоков.
+\begin{lstlisting}[caption={Скрипт запуска}, label={lst:script}]
+import sys
+from subprocess import Popen, PIPE
+
+# arguments
+args = list(sys.argv)
+if len(args) < 4:
+sys.exit("Usage: python testparallel.py *programm* *input file* *num repeats*")
+
+programm = args[1]
+inputFile = args[2]
+numRepeats = int(args[3])
+
+#run program
+allAreas = 0.0
+for proc in [1, 2, 4, 8]:
+times = []
+for i in range(numRepeats):
+process = Popen([programm, inputFile, '1000000', str(proc)], stdout=PIPE)
+exit_code = process.wait()
+if exit_code != 0:
+sys.exit("Cannot run programm")
+
+for line in process.stdout:
+if 'Circles' in line:
+allAreas = allAreas + float(line.split()[-1])
+if 'Elapsed' in line:
+times.append(float(line.split()[-1]))
+
+av = sum(times) / numRepeats
+disp = 0.0
+for val in times:
+disp = disp + (val - av) ** 2
+if numRepeats == 1:
+disp = disp / numRepeats
+else:
+disp = disp / (numRepeats - 1)
+
+maxError = 2.58 * ((disp / numRepeats) ** (1.0 / 2.0))
+
+print("{} threads: average = {}, dispersion = {}".format(proc, av, disp))
+print("99% interval: {} +- {}".format(av, maxError))
+
+print("Average area = {}".format(allAreas / (4 * numRepeats)))
+\end{lstlisting}
+
+Данный скрипт принимает путь к исполняемому файлу, путь к файлу с входными данными и число повторных запусков каждой программы. В результате он выводит оценки мат. ожидания и дисперсии времени работы программы для каждой конфигурации запуска. Оценки мат. ожидания и дисперсии вычисляются по следующим формулам:
+\begin{equation*}
+	M=\frac{\sum_{i}{x_i}}{n}
+\end{equation*}
+\begin{equation*}
+	D=\frac{1}{n - 1} {\sum_{i}{(x_i - M)^2}}
+\end{equation*}
+
+По оценкам мат. ожидания и дисперсии вычисляется 99\% доверительный интервал для времени работы программы. Доверительный интервал вычисляется по следующей формуле:
+\begin{equation*}
+	I = M \pm t_{\alpha} \sqrt{\frac{D}{n}}
+\end{equation*}
+
+В данной формуле $t_{\alpha}$ --- это критерий Стьюдента для вероятности $\alpha$. При $\alpha = 0.99$, $t_{\alpha} = 2.58$. 
+
+Так же данный скрипт выводит вычисленную среднюю площадь фигуры.
+
+Запуск программы был повторен 50 раз. Результаты экспериментов вы можете видеть в таблице \ref{tab:input1}.
+
+\begin{table}[h!]
+	\caption{Результаты}
+	
+	\center
+	\begin{tabular}{|r|c|c|c|}
+		\hline 
+		\textbf{Кол-во потоков} & \textbf{Однопоточная} & \textbf{PThread} & \textbf{MPI} \\ 
+		\hline 
+		\textbf{1} & $0.39714 \pm 0.0008$ & $0.3699 \pm 0.0027$ & $0.3719 \pm 0.0008$ \\ 
+		\hline 
+		\textbf{2} & ---                  & $0.1912 \pm 0.0018$ & $0.2025 \pm 0.0013$ \\ 
+		\hline 
+		\textbf{4} & ---                  & \boldmath$0.1002 \pm 0.0017$ & $0.1246 \pm 0.0024$ \\ 
+		\hline 
+		\textbf{8} & ---                  & $0.1067 \pm 0.0011$ & $0.1727 \pm 0.0052$ \\ 
+		\hline 
+	\end{tabular} 
+	
+	\label{tab:input1}
+\end{table}
+
+
+Проблемные места данного тестирования:
+\begin{enumerate}
+\item Короткие тесты
+\item Одинарный запуск каждого из тестов
+\end{enumerate}
+
+Первая проблема делает разницу между тестами менее заметной, и увеличивает влияние сторонних факторов (например, конкуренцию за процессорное время с другими процессами). И хоть проблема решаемая увеличением количества "выстрелов", и при имеющихся результатах видно, что OpenMP справляется с задачей эффективнее, чем Pthreads, а распараллеливание позволяет достичь ощутимый прирост производительности в хорошо распаралеливаемых алгоритмах.
+
+Вторая проблема остаётся не решённой в рамках данной работы, однако система, на которой проводились замеры, обладает малым количеством фоновых процессов и не была со стороны пользователя загружена другими процессами.
+
+ 
+Спортивного интереса ради, каждая из приведённых программ была запущена на большем наборе данных с несколькими кругами:
+\begin{lstlisting}[caption={Набор данных 2}, label={lst:input1}]
+0 0 10
+18 16 100
+5 0.1 0.1
+\end{lstlisting}
+
+Результаты приведены в таблице \ref{tab:input2}.
+\begin{table}[h!]
+	\caption{Результаты на втором наборе данных}
+	
+	\center
+	\begin{tabular}{|r|c|c|c|}
+		\hline 
+		\textbf{Кол-во потоков} & \textbf{Однопоточная} & \textbf{PThread} & \textbf{MPI} \\ 
+		\hline 
+		\textbf{1} & $0.4002 \pm 0.0018$ & $0.3906 \pm 0.0029$ & $0.4139 \pm 0.0036$ \\ 
+		\hline 
+		\textbf{2} & ---                 & $0.2021 \pm 0.0016$ & $0.2276 \pm 0.0041$ \\ 
+		\hline 
+		\textbf{4} & ---                 & \boldmath$0.1097 \pm 0.0022$ & $0.1329 \pm 0.0031$ \\ 
+		\hline 
+		\textbf{8} & ---                 & $0.1143 \pm 0.0017$ & $0.1816 \pm 0.0051$ \\ 
+		\hline 
+	\end{tabular}
+	
+	\label{tab:input2}
+\end{table}
+
+\section{Выводы}
+Решаемая задача имела минимум проблем с рапараллеливанием - почти полное отсутствие конфликтов по данным. Что не позволило более детально взглянуть на гибкость рассматриваемых библиотек: Pthreads и OpenMP.
+
+Однако, во уже время изучения библиотек для решения данной проблемы было понятно, что OpenMP - более гибкий, настраиваемый инструмент, нежели Pthreads, так как изначально(без необходимости самостоятельной реализации) имеет более богатый инструментарий.
+
+Тесты показали, что в данной задаче OpenMP справляется с задачей быстрее, чем Pthreads. А распараллеленые решения могут помочь достичь почти 3х кратного ускорения для данной задачи на конкретном компьютере.
+\end{document}

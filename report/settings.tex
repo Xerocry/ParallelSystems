@@ -1,0 +1,120 @@
+\documentclass[a4paper,12pt]{extarticle}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1,T2A]{fontenc}
+\usepackage[russian]{babel}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{color}
+\usepackage{here}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
+\usepackage{caption}
+\renewcommand{\lstlistingname}{Программа} % заголовок листингов кода
+
+\bibliographystyle{ugost2008ls}
+
+\usepackage{listings}
+\lstset{ %
+extendedchars=\true,
+keepspaces=true,
+language=C,						% choose the language of the code
+basicstyle=\footnotesize,		% the size of the fonts that are used for the code
+numbers=left,					% where to put the line-numbers
+numberstyle=\footnotesize,		% the size of the fonts that are used for the line-numbers
+stepnumber=1,					% the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,					% how far the line-numbers are from the code
+backgroundcolor=\color{white},	% choose the background color. You must add \usepackage{color}
+showspaces=false				% show spaces adding particular underscores
+showstringspaces=false,			% underline spaces within strings
+showtabs=false,					% show tabs within strings adding particular underscores
+frame=single,           		% adds a frame around the code
+tabsize=2,						% sets default tabsize to 2 spaces
+captionpos=t,					% sets the caption-position to top
+breaklines=true,				% sets automatic line breaking
+breakatwhitespace=false,		% sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)},			% if you want to add a comment within your code
+postbreak=\raisebox{0ex}[0ex][0ex]{\ensuremath{\color{red}\hookrightarrow\space}},
+texcl=true,
+inputpath=../,                     % директория с листингами
+}
+
+\lstdefinestyle{base_listing}{
+	extendedchars     = {true},
+	inputencoding     = {utf8}, 
+	basicstyle        = {\ttfamily \scriptsize},
+	keywordstyle      = {\rmfamily \bfseries},
+	commentstyle      = {\rmfamily \itshape},
+	tabsize           = {2},
+	flexiblecolumns   = {false},
+	frame             = {single},
+	showstringspaces  = {false},
+	breaklines        = {true}, 
+	breakatwhitespace = {true}
+}
+
+\lstdefinelanguage{LLVM-asm}
+{
+	morekeywords = {
+		load, store, malloc, alloca, free, getelementptr,
+		add, sub, insertvalue, extractvalue, icmp, call,
+		define, void, global
+	},
+	sensitive   = false,
+	morecomment = [l]{;}
+}
+
+\lstdefinestyle{crs_llvm}{
+	style    = {base_listing},
+	language = {LLVM-asm}
+}
+
+\lstdefinestyle{crs_cpp}{
+	style    = {base_listing},
+	language = {C++}
+}
+
+\lstdefinestyle{crs_sql}{
+	style    = {base_listing},
+	language = {SQL}
+}
+
+\lstdefinestyle{crs_bash}{
+	style    = {base_listing},
+	language = {bash}
+}
+
+\lstdefinestyle{crs_python}{
+	style    = {base_listing},
+	language = {python}
+}
+
+\usepackage[left=2cm,right=2cm,
+top=2cm,bottom=2cm,bindingoffset=0cm]{geometry}
+
+%% Нумерация картинок по секциям
+\usepackage{chngcntr}
+\counterwithin{figure}{section}
+\counterwithin{table}{section}
+
+%%Точки нумерации заголовков
+\usepackage{titlesec}
+\titlelabel{\thetitle.\quad}
+\usepackage[dotinlabels]{titletoc}
+
+%% Оформления подписи рисунка
+\addto\captionsrussian{\renewcommand{\figurename}{Рисунок}}
+\captionsetup[figure]{labelsep = period}
+
+%% Подпись таблицы
+\DeclareCaptionFormat{hfillstart}{\hfill#1#2#3\par}
+\captionsetup[table]{format=hfillstart,labelsep=newline,justification=centering,skip=-10pt,textfont=bf}
+
+%% Путь к каталогу с рисунками
+\graphicspath{{fig/}}
