@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/cygdrive/c/ras/5 course/Second/Parallel/Single.c
+stdio.h
+-
+math.h
+-
+stdlib.h
+-
+ctype.h
+-
+unistd.h
+-
+string.h
+-
+stdint.h
+-
+

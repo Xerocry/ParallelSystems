@@ -1,0 +1,3 @@
+/cygdrive/c/ras/5 course/Second/Parallel/cmake-build-debug/CMakeFiles/edit_cache.dir
+/cygdrive/c/ras/5 course/Second/Parallel/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/cygdrive/c/ras/5 course/Second/Parallel/cmake-build-debug/CMakeFiles/Parallel.dir
